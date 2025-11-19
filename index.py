@@ -1,8 +1,7 @@
 import streamlit as st
-import matplotlib.pyplot as plt # Importa Matplotlib para gráficas
-import numpy as np # Importa NumPy para cálculos numéricos
+import matplotlib.pyplot as plt 
+import numpy as np
 
-# ... el resto de tu código de configuración de página y estilos ...
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Física Master", page_icon="E=MC", layout="wide")
@@ -13,7 +12,7 @@ st.markdown("""
 Bienvenido. Esta aplicación está diseñada para ayudarte a entender conceptos
 físicos y practicar con problemas reales.
 """)
-st.divider() # Una línea divisoria visual
+st.divider() # línea divisoria visual
 
 # --- BARRA LATERAL (MENÚ) ---
 st.sidebar.header("Navegación")
@@ -54,7 +53,7 @@ elif tema == "Cinemática (MRU)":
                 st.write("Sustituyendo datos:")
                 st.code("t = 300 km / 120 km/h = 2.5 horas")
                 st.success("Resultado: 2.5 horas")
-            # ... (tu código anterior de configuración y la barra lateral) ...
+
         with col1:
             st.divider() # Otra línea para separar visualmente
             st.header("Tiro Parabólico (Básico)")
@@ -81,7 +80,7 @@ elif tema == "Cinemática (MRU)":
             y = (velocidad_inicial * np.sin(angulo_radianes) * t) - (0.5 * g * t**2)
             
             # Crear la figura y los ejes de Matplotlib
-            fig, ax = plt.subplots(figsize=(10, 5)) # Tamaño de la gráfica
+            fig, ax = plt.subplots(figsize=(10, 5)) 
             ax.plot(x, y, label="Trayectoria del Proyectil", color='blue')
             ax.set_xlabel("Distancia Horizontal (metros)")
             ax.set_ylabel("Altura (metros)")
@@ -100,7 +99,6 @@ elif tema == "Cinemática (MRU)":
             * Altura máxima: `{y.max():.2f}` metros
             """)
 
-# ... (el resto de tus elif para Dinámica, Termodinámica, etc.) ...
     with tab_cin2:
         st.subheader(" Calculadora de d = v t")
         st.write("Cambia los valores para calcular la distancia resultante.")
@@ -124,7 +122,6 @@ elif tema == "Cinemática (MRU)":
 elif tema == "Dinámica (Newton)":
     st.header(" Leyes de Newton")
     
-    # Pestañas para organizar mejor la teoría de la práctica
     tab1, tab2 = st.tabs(["Teoría", "Calculadora de Fuerza"])
     
     with tab1:
