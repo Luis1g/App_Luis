@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MarketPulse Pro - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-white p-5">
+
+    <div class="max-w-5xl mx-auto bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+        <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-6 text-center">
+            MarketPulse Dashboard
+        </h1>
+        
+        <div class="flex gap-4 mb-4">
+            <input id="tickerInput" type="text" placeholder="Ej: AAPL o BTC-USD, ETH-USD" 
+                   class="flex-1 p-4 rounded-xl bg-slate-700 border border-slate-600 focus:ring-2 focus:ring-blue-500 uppercase outline-none">
+            <button onclick="updateDashboard()" id="btnAnalizar"
+                    class="bg-blue-600 hover:bg-blue-500 px-10 py-4 rounded-xl font-bold transition flex items-center gap-2">
+                <span id="btnText">Analizar</span>
+                <div id="spinner" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </button>
+        </div>
+
+        <div class="flex gap-2 justify-center mb-8">
+            <button onclick="changePeriod('5d', this)" class="period-btn bg-slate-700 px-4 py-1 rounded-full text-xs hover:bg-slate-600 transition">5 DÍAS</button>
+            <button onclick="changePeriod('1mo', this)" class="period-btn bg-blue-600 px-4 py-1 rounded-full text-xs hover:bg-blue-500 transition">1 MES</button>
+            <button onclick="changePeriod('6mo', this)" class="period-btn bg-slate-700 px-4 py-1 rounded-full text-xs hover:bg-slate-600 transition">6 MESES</button>
+            <button onclick="changePeriod('1y', this)" class="period-btn bg-slate-700 px-4 py-1 rounded-full text-xs hover:bg-slate-600 transition">1 AÑO</button>
+        </div>
+
+        <div id="result" class="hidden space-y-6">
+            <div id="statsPanel" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-6 bg-slate-700/50 rounded-2xl border border-slate-600">
+                    <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Precio Actual</p>
+                    <p id="priceDisplay" class="text-5xl font-mono mt-2">$0.00</p>
+                </div>
+                <div id="trendBox" class="p-6 rounded-2xl border border-slate-600 flex flex-col justify-center">
+                    <p class="text-slate-400 text-sm font-medium uppercase tracking-wider">Predicción Mañana</p>
+                    <p id="predDisplay" class="text-5xl font-mono mt-2">$0.00</p>
+                    <p id="signalLabel" class="text-sm font-black mt-2 uppercase"></p>
+                </div>
+            </div>
+
+            <div id="chartContainer" class="bg-slate-900 p-6 rounded-2xl border border-slate-700 h-[450px]">
+                <canvas id="marketChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPeriod = '1mo'; 
+        let myChart = null;
+
+        function changePeriod(period, element) {
+            currentPeriod = period;
+            document.querySelectorAll('.period-btn').forEach(btn => btn.classList.replace('bg-blue-600', 'bg-slate-700'));
+            element.classList.replace('bg-slate-700', 'bg-blue-600');
+            updateDashboard();
+        }
+
+        async function updateDashboard() {
+            const ticker = document.getElementById('tickerInput').value.toUpperCase();
+            if(!ticker) return;
+
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('spinner');
+            btnText.innerText = "Calculando...";
+            spinner.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/market-data/${ticker}?period=${currentPeriod}`);
+                const res = await response.json();
+
+                if(res.error) return alert(res.error);
+
+                document.getElementById('result').classList.remove('hidden');
+                const statsPanel = document.getElementById('statsPanel');
+
+                if(res.type === "comparison") {
+                    statsPanel.classList.add('hidden');
+                    renderChart(res.data, true);
+                } else {
+                    statsPanel.classList.remove('hidden');
+                    document.getElementById('priceDisplay').innerText = `$${res.price}`;
+                    document.getElementById('predDisplay').innerText = `$${res.prediction}`;
+                    
+                    const signalLabel = document.getElementById('signalLabel');
+                    signalLabel.innerText = res.signal;
+                    signalLabel.className = `text-sm font-black mt-2 uppercase ${res.signal_color}`;
+                    
+                    const trendBox = document.getElementById('trendBox');
+                    trendBox.className = `p-6 rounded-2xl border ${res.signal_color.replace('text-', 'border-')}/30 bg-slate-700/50`;
+                    
+                    // Ajustamos el formato para renderChart
+                    const singleData = {};
+                    singleData[res.symbol] = { labels: res.labels, values: res.values };
+                    renderChart(singleData, false);
+                }
+            } catch (e) {
+                alert("Error de conexión");
+            } finally {
+                btnText.innerText = "Analizar";
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function renderChart(dataMap, isComparison) {
+            const container = document.getElementById('chartContainer');
+            if (myChart) myChart.destroy();
+            container.innerHTML = '<canvas id="marketChart"></canvas>';
+            const ctx = document.getElementById('marketChart').getContext('2d');
+
+            const colors = ['#60a5fa', '#f87171', '#34d399', '#fbbf24'];
+            const datasets = Object.keys(dataMap).map((ticker, i) => ({
+                label: ticker,
+                data: dataMap[ticker].values,
+                borderColor: colors[i % colors.length],
+                backgroundColor: isComparison ? 'transparent' : 'rgba(96, 165, 250, 0.1)',
+                fill: !isComparison,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 0
+            }));
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: dataMap[Object.keys(dataMap)[0]].labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { color: '#94a3b8' } } },
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

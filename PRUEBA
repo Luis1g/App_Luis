@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>MarketPulse Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-white p-5">
+
+    <div class="max-w-4xl mx-auto bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+        <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-6">
+            MarketPulse Dashboard
+        </h1>
+        
+        <div class="flex gap-4 mb-8">
+            <input id="tickerInput" type="text" placeholder="Ej: BTC-USD o TSLA" 
+                   class="flex-1 p-3 rounded-lg bg-slate-700 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase">
+            <button onclick="updateDashboard()" 
+                    class="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-lg font-bold transition">
+                Analizar
+            </button>
+        </div>
+
+        <div id="result" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="p-4 bg-slate-700/50 rounded-xl border border-slate-600">
+                    <p class="text-slate-400 text-sm">Precio Actual</p>
+                    <p id="priceDisplay" class="text-4xl font-mono text-white">$0.00</p>
+                </div>
+                <div id="trendBox" class="p-4 rounded-xl border border-slate-600">
+                    <p class="text-slate-400 text-sm">Predicción Mañana</p>
+                    <p id="predDisplay" class="text-4xl font-mono">$0.00</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 p-4 rounded-xl">
+                <canvas id="marketChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart; // Variable para guardar la instancia de la gráfica
+
+        async function updateDashboard() {
+            const ticker = document.getElementById('tickerInput').value.toUpperCase();
+            const response = await fetch(`http://127.0.0.1:8000/market-data/${ticker}`);
+            const data = await response.json();
+
+            if(data.error) return alert("No se encontró el símbolo");
+
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('priceDisplay').innerText = `$${data.price}`;
+            document.getElementById('predDisplay').innerText = `$${data.prediction}`;
+            
+            const trendBox = document.getElementById('trendBox');
+            const isUp = data.trend.includes('SUBE');
+            trendBox.className = `p-4 rounded-xl border ${isUp ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400' : 'bg-red-900/30 border-red-500 text-red-400'}`;
+
+            renderChart(data.labels, data.values, data.symbol);
+        }
+
+        function renderChart(labels, values, symbol) {
+            const ctx = document.getElementById('marketChart').getContext('2d');
+            
+            if(myChart) myChart.destroy(); // Borrar gráfica anterior si existe
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Historial de ${symbol}`,
+                        data: values,
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+        async function updatePrice() {
+            const ticker = document.getElementById('tickerInput').value.toUpperCase();
+            const resultDiv = document.getElementById('result');
+            
+            const response = await fetch(`http://127.0.0.1:8000/market-data/${ticker}`);
+            const data = await response.json();
+
+            if(data.price) {
+                resultDiv.classList.remove('hidden');
+                document.getElementById('symbolName').innerText = data.symbol;
+                document.getElementById('priceDisplay').innerText = `$${data.price}`;
+                
+                // Nueva sección para la predicción
+                const predElement = document.getElementById('predictionDisplay');
+                predElement.innerHTML = `
+                    <div class="mt-4 p-4 bg-slate-700 rounded-lg">
+                        <p class="text-sm text-slate-300">Predicción para mañana:</p>
+                        <p class="text-2xl font-bold ${data.trend.includes('SUBE') ? 'text-green-400' : 'text-red-400'}">
+                            $${data.prediction} (${data.trend})
+                        </p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
